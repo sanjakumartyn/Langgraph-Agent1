@@ -1,0 +1,146 @@
+```http
+### ============================================
+### Health Check
+### ============================================
+
+GET http://127.0.0.1:8000/
+
+###
+
+### ============================================
+### Company Intelligence - Asian Paints
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Asian Paints",
+  "company_website": "https://www.asianpaints.com"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Nestle India
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Nestle India",
+  "company_website": "https://www.nestle.in"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Tata Consultancy Services
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Tata Consultancy Services",
+  "company_website": "https://www.tcs.com"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Microsoft
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Microsoft",
+  "company_website": "https://www.microsoft.com"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Apple
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Apple",
+  "company_website": "https://www.apple.com"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Google
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Google",
+  "company_website": "https://about.google"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Amazon
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Larsen & Toubro",
+  "company_website": "https://www.larsentoubro.com/"
+}
+
+###
+
+### ============================================
+### Company Intelligence - NVIDIA
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "NVIDIA",
+  "company_website": "https://www.nvidia.com"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Without Website
+### System will try to discover the official website
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Infosys"
+}
+
+###
+
+### ============================================
+### Company Intelligence - Another Example
+### ============================================
+
+POST http://127.0.0.1:8000/company/intelligence
+Content-Type: application/json
+
+{
+  "company_name": "Zoho"
+}
+```
