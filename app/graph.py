@@ -1,4 +1,5 @@
-from typing import TypedDict, Optional, Dict, Any, List
+from typing import TypedDict, Optional, Dict, Any, List, Annotated
+import operator
 from langgraph.graph import StateGraph, END
 
 from app.nodes import (
@@ -19,26 +20,48 @@ from app.nodes import (
 )
 
 
+def take_last(left: Any, right: Any) -> Any:
+    return right if right is not None else left
+
+
+def merge_dicts(left: Dict[str, Any], right: Dict[str, Any]) -> Dict[str, Any]:
+    if not left:
+        return right
+    if not right:
+        return left
+    return {**left, **right}
+
+
+def merge_lists(left: List[Any], right: List[Any]) -> List[Any]:
+    res = []
+    seen = set()
+    for item in (left or []) + (right or []):
+        if item not in seen:
+            res.append(item)
+            seen.add(item)
+    return res
+
+
 class AgentState(TypedDict):
-    company_name: str
-    company_website: Optional[str]
+    company_name: Annotated[str, take_last]
+    company_website: Annotated[Optional[str], take_last]
 
-    website_data: Dict[str, Any]
-    product_menu_data: Dict[str, Any]
-    wikipedia_data: Dict[str, Any]
-    wikidata_data: Dict[str, Any]
-    news_data: Dict[str, Any]
-    rss_data: Dict[str, Any]
+    website_data: Annotated[Dict[str, Any], merge_dicts]
+    product_menu_data: Annotated[Dict[str, Any], merge_dicts]
+    wikipedia_data: Annotated[Dict[str, Any], merge_dicts]
+    wikidata_data: Annotated[Dict[str, Any], merge_dicts]
+    news_data: Annotated[Dict[str, Any], merge_dicts]
+    rss_data: Annotated[Dict[str, Any], merge_dicts]
 
-    website_summary: Dict[str, Any]
-    wikipedia_summary: Dict[str, Any]
-    wikidata_summary: Dict[str, Any]
-    news_summary: Dict[str, Any]
-    rss_summary: Dict[str, Any]
+    website_summary: Annotated[Dict[str, Any], merge_dicts]
+    wikipedia_summary: Annotated[Dict[str, Any], merge_dicts]
+    wikidata_summary: Annotated[Dict[str, Any], merge_dicts]
+    news_summary: Annotated[Dict[str, Any], merge_dicts]
+    rss_summary: Annotated[Dict[str, Any], merge_dicts]
 
-    validated_evidence: Dict[str, Any]
-    final_result: Dict[str, Any]
-    errors: List[str]
+    validated_evidence: Annotated[Dict[str, Any], merge_dicts]
+    final_result: Annotated[Dict[str, Any], merge_dicts]
+    errors: Annotated[List[str], merge_lists]
 
 
 def build_graph():
@@ -66,30 +89,44 @@ def build_graph():
 
     graph.set_entry_point("guess_company_website")
 
+    # Parallel branching outgoing from guess_company_website
     graph.add_edge("guess_company_website", "scrape_company_website")
+    graph.add_edge("guess_company_website", "fetch_wikipedia_data")
+    graph.add_edge("guess_company_website", "fetch_wikidata_data")
+    graph.add_edge("guess_company_website", "fetch_news_data")
+    graph.add_edge("guess_company_website", "fetch_rss_data")
+
+    # Branch 1: Scraping website and summarizing
     graph.add_edge("scrape_company_website", "extract_product_menu_data")
     graph.add_edge("extract_product_menu_data", "extract_website_summary")
 
-    graph.add_edge("extract_website_summary", "fetch_wikipedia_data")
+    # Branch 2: Wikipedia data extraction
     graph.add_edge("fetch_wikipedia_data", "extract_wikipedia_summary")
 
-    graph.add_edge("extract_wikipedia_summary", "fetch_wikidata_data")
+    # Branch 3: Wikidata data extraction
     graph.add_edge("fetch_wikidata_data", "extract_wikidata_summary")
 
-    graph.add_edge("extract_wikidata_summary", "fetch_news_data")
+    # Branch 4: News data extraction
     graph.add_edge("fetch_news_data", "extract_news_summary")
 
-    graph.add_edge("extract_news_summary", "fetch_rss_data")
+    # Branch 5: RSS feed matching and extraction
     graph.add_edge("fetch_rss_data", "extract_rss_summary")
 
+    # Merge barrier joining all branches at validate_evidence
+    graph.add_edge("extract_website_summary", "validate_evidence")
+    graph.add_edge("extract_wikipedia_summary", "validate_evidence")
+    graph.add_edge("extract_wikidata_summary", "validate_evidence")
+    graph.add_edge("extract_news_summary", "validate_evidence")
     graph.add_edge("extract_rss_summary", "validate_evidence")
+
+    # Final steps
     graph.add_edge("validate_evidence", "generate_final_intelligence")
     graph.add_edge("generate_final_intelligence", END)
 
     return graph.compile()
 
 
-def run_company_agent(company_name: str, company_website: Optional[str] = None):
+async def run_company_agent(company_name: str, company_website: Optional[str] = None):
     app = build_graph()
 
     initial_state: AgentState = {
@@ -114,5 +151,5 @@ def run_company_agent(company_name: str, company_website: Optional[str] = None):
         "errors": [],
     }
 
-    result = app.invoke(initial_state)
+    result = await app.ainvoke(initial_state)
     return result

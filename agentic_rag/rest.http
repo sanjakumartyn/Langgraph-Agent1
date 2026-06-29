@@ -1,0 +1,48 @@
+### ============================================
+### Health Check
+### ============================================
+
+GET http://127.0.0.1:8001/
+
+###
+
+### ============================================
+### Conversational RAG Chat Query
+### ============================================
+
+POST http://127.0.0.1:8001/rag/chat
+Content-Type: application/json
+
+{
+  "query": "Is there any info on Zoho? What are their key products?",
+  "session_id": "test-session-999"
+}
+
+###
+
+### ============================================
+### Conversational RAG Chat Query - Follow up
+### ============================================
+
+POST http://127.0.0.1:8001/rag/chat
+Content-Type: application/json
+
+{
+  "query": "What about their competitors?",
+  "session_id": "test-session-999"
+}
+
+###
+
+### ============================================
+### Ingest Company Intelligence
+### ============================================
+
+POST http://127.0.0.1:8001/rag/ingest
+Content-Type: application/json
+
+{
+  "company_name": "Zoho",
+  "company_website": "https://www.zoho.com"
+}
+

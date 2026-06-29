@@ -143,4 +143,26 @@ Content-Type: application/json
 {
   "company_name": "Zoho"
 }
+
+###
+
+### ============================================
+### Company Intelligence - Semantic Search
+### ============================================
+
+POST http://127.0.0.1:8000/company/search
+Content-Type: application/json
+
+{
+  "query": "cloud computing and business software offerings",
+  "limit": 3
+}
+
+###
+
+### ============================================
+### Company Intelligence - PDF Report Download
+### ============================================
+
+GET http://127.0.0.1:8000/company/report/Zoho/pdf
 ```
