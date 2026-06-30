@@ -25,7 +25,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from app.graph import run_company_agent
-from .database import search_supabase_vectors, get_cached_report_supabase, save_report_supabase
+from .database import search_neon_vectors, get_cached_report_neon, save_report_neon, search_mongodb_internal
 
 async def safe_get_async(url: str, params=None, headers=None, timeout=15):
     try:
@@ -94,7 +94,7 @@ def chunk_dossier(report: Dict[str, Any]) -> List[str]:
     return [c.strip() for c in chunks if c.strip()]
 
 
-async def ingest_company_to_supabase(company_name: str, company_website: Optional[str] = None) -> Dict[str, Any]:
+async def ingest_company_to_neon(company_name: str, company_website: Optional[str] = None) -> Dict[str, Any]:
     """
     Crawls web sources using the Company Intelligence Agent, chunks the report,
     generates embeddings, and caches the results in Supabase.
@@ -156,8 +156,8 @@ async def ingest_company_to_supabase(company_name: str, company_website: Optiona
                 "embedding": [0.0] * dim
             })
             
-        # Cache to Supabase
-        save_report_supabase(
+        # Cache to Neon
+        save_report_neon(
             company_name="MockCorp AI Solutions",
             website="https://www.mockcorp.ai",
             report_data=report_data,
@@ -165,8 +165,19 @@ async def ingest_company_to_supabase(company_name: str, company_website: Optiona
         )
         return report_data
 
-    # 1. Run the Company Intelligence Agent
-    result = await run_company_agent(company_name, company_website)
+    # 1. Run the Company Intelligence Agent in a dedicated thread/loop to bypass Windows Uvicorn event loop restrictions
+    import asyncio
+    
+    def _run_agent_sync():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(run_company_agent(company_name, company_website))
+        finally:
+            loop.close()
+            
+    result = await asyncio.to_thread(_run_agent_sync)
+    
     report_data = result.get("final_result", {})
     if not report_data or not report_data.get("company_summary"):
         # If scraper returned an empty report or failed, construct a basic profile
@@ -204,10 +215,10 @@ async def ingest_company_to_supabase(company_name: str, company_website: Optiona
         except Exception as e:
             print(f"Error embedding chunk for {company_name}: {str(e)}")
             
-    # 4. Save to Supabase
-    save_report_supabase(
-        company_name=report_data.get("company_name") or company_name,
-        website=report_data.get("website") or "",
+    # 4. Save to NeonDB
+    save_report_neon(
+        company_name=company_name,
+        website=report_data.get("website", ""),
         report_data=report_data,
         chunks_with_embeddings=chunks_with_embeddings
     )
@@ -220,9 +231,9 @@ async def vector_search_tool(query: str, limit: int = 3) -> str:
     try:
         # Embed query
         embeddings_model = get_embeddings()
-        query_emb = embeddings_model.embed_query(query)
-        # Query Supabase vector index
-        raw_results = search_supabase_vectors(query_emb, limit=limit)
+        query_emb = await embeddings_model.aembed_query(query)
+        # Query Neon vector index
+        raw_results = search_neon_vectors(query_emb, limit=limit)
         
         if not raw_results:
             return "No matching records found in the vector database."
@@ -242,11 +253,11 @@ async def vector_search_tool(query: str, limit: int = 3) -> str:
 async def get_company_dossier_tool(company_name: str) -> str:
     """Retrieve the full intelligence report dossier for a specific company from the database.
     If not cached, trigger real-time scraping and ingestion."""
-    report = get_cached_report_supabase(company_name)
+    report = get_cached_report_neon(company_name)
     if not report:
         print(f"No stored intelligence dossier found for '{company_name}' in the database. Triggering real-time ingestion...")
         try:
-            report = await ingest_company_to_supabase(company_name)
+            report = await ingest_company_to_neon(company_name)
         except Exception as e:
             return f"No stored intelligence dossier found for '{company_name}', and automatic ingestion failed: {str(e)}"
     return json.dumps(report, indent=2)
@@ -271,14 +282,15 @@ async def live_news_lookup_tool(company_name: str) -> str:
                 "apiKey": newsapi_key
             }
         )
-        if status == 200 and data:
+        if status == 200 and isinstance(data, dict):
             for item in data.get("articles", []):
-                articles.append({
-                    "title": item.get("title"),
-                    "source": item.get("source", {}).get("name"),
-                    "url": item.get("url"),
-                    "description": item.get("description")
-                })
+                if isinstance(item, dict):
+                    articles.append({
+                        "title": item.get("title"),
+                        "source": item.get("source", {}).get("name") if isinstance(item.get("source"), dict) else None,
+                        "url": item.get("url"),
+                        "description": item.get("description")
+                    })
                 
     # 2. Fetch MediaStack
     if mediastack_key:
@@ -291,14 +303,15 @@ async def live_news_lookup_tool(company_name: str) -> str:
                 "limit": 5
             }
         )
-        if status == 200 and data and "data" in data:
+        if status == 200 and isinstance(data, dict) and "data" in data:
             for item in data["data"]:
-                articles.append({
-                    "title": item.get("title"),
-                    "source": item.get("source"),
-                    "url": item.get("url"),
-                    "description": item.get("description")
-                })
+                if isinstance(item, dict):
+                    articles.append({
+                        "title": item.get("title"),
+                        "source": item.get("source"),
+                        "url": item.get("url"),
+                        "description": item.get("description")
+                    })
                 
     if not articles:
         # Fallback to a quick Wikipedia lookup
@@ -311,8 +324,14 @@ async def live_news_lookup_tool(company_name: str) -> str:
                 "format": "json",
             }
         )
-        if status == 200 and data.get("query", {}).get("search"):
-            title = data["query"]["search"][0]["title"]
+        if status == 200 and isinstance(data, dict):
+            query_data = data.get("query")
+            if isinstance(query_data, dict):
+                search_results = query_data.get("search")
+                if isinstance(search_results, list) and len(search_results) > 0:
+                    first_result = search_results[0]
+                    if isinstance(first_result, dict) and "title" in first_result:
+                        title = first_result["title"]
             status, summary = await safe_get_async(
                 "https://en.wikipedia.org/api/rest_v1/page/summary/" + title.replace(" ", "_")
             )
@@ -330,3 +349,23 @@ async def live_news_lookup_tool(company_name: str) -> str:
             formatted.append(f"- {a['title']} ({a['source']}): {a['description'] or ''}")
             
     return "\n".join(formatted[:6])
+
+
+async def search_mongodb_tool(query: str, limit: int = 5) -> str:
+    """Search the company's internal MongoDB database collections for documents/information matching the query."""
+    try:
+        results = search_mongodb_internal(query, limit=limit)
+        if not results:
+            return f"No matching internal company documents found in MongoDB for query '{query}'."
+            
+        formatted = []
+        for r in results:
+            col = r.pop("_collection", "unknown")
+            formatted.append(
+                f"--- Result from collection '{col}' ---\n"
+                f"{json.dumps(r, indent=2)}\n"
+            )
+        return "\n".join(formatted)
+    except Exception as e:
+        return f"Error executing search_mongodb_tool: {str(e)}"
+
