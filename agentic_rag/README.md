@@ -46,9 +46,10 @@ MEDIASTACK_API_KEY=your-mediastack-key
 ```
 
 ### 3. Run the Server
-Start the service on port `8001` (to prevent conflicts with the main api port `8000`):
+Start the service on port `8001` (to prevent conflicts with the main api port `8000`). Make sure you are in the `agentic_rag` directory:
 ```bash
-uv run uvicorn agentic_rag.rag_app.main:app --port 8001
+cd agentic_rag
+uv run uvicorn rag_app.main:app --port 8001
 ```
 
 Open interactive Swagger docs at [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs).

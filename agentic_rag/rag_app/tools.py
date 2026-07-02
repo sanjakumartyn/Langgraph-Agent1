@@ -25,7 +25,144 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from app.graph import run_company_agent
-from .database import search_neon_vectors, get_cached_report_neon, save_report_neon, search_mongodb_internal
+from .database import search_neon_vectors, get_cached_report_neon, save_report_neon, search_mongodb_internal, mongo_db
+
+
+# ─── AI Product Fetcher (Our Core Value Prop) ─────────────────────────────────
+def get_ai_products_from_mongodb(
+    industry: str = "",
+    company_name: str = "",
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Fetch our AI products from MongoDB, prioritising AI & Generative AI category,
+    then Data & Analytics, Enterprise Automation, Sales Intelligence.
+    Optionally filter by target industry for relevance.
+    """
+    if mongo_db is None:
+        print("[get_ai_products_from_mongodb] MongoDB not connected — returning empty list.")
+        return []
+
+    try:
+        products = mongo_db["products"]
+
+        # Priority order for AI-company: AI products first, then data/analytics
+        priority_categories = [
+            "AI & Generative AI",
+            "Data & Analytics",
+            "Sales Intelligence",
+            "Enterprise Automation",
+            "CRM Solutions",
+        ]
+
+        results = []
+        seen_ids = set()
+
+        # 1. Fetch AI & Gen AI products first
+        for category in priority_categories:
+            query: Dict[str, Any] = {"category": category}
+            if industry:
+                # Try industry-specific match first, then fall back to general
+                industry_specific = list(products.find(
+                    {"category": category, "targetIndustry": {"$regex": industry, "$options": "i"}},
+                    {"_id": 0}
+                ).limit(3))
+                for p in industry_specific:
+                    pid = p.get("serviceId", "")
+                    if pid not in seen_ids:
+                        seen_ids.add(pid)
+                        results.append(p)
+
+            # Also grab general ones from this category
+            general = list(products.find({"category": category}, {"_id": 0}).limit(4))
+            for p in general:
+                pid = p.get("serviceId", "")
+                if pid not in seen_ids:
+                    seen_ids.add(pid)
+                    results.append(p)
+
+            if len(results) >= limit:
+                break
+
+        # 2. If we still need more, grab any remaining products
+        if len(results) < limit:
+            extra = list(products.find({}, {"_id": 0}).limit(limit - len(results) + 10))
+            for p in extra:
+                pid = p.get("serviceId", "")
+                if pid not in seen_ids:
+                    seen_ids.add(pid)
+                    results.append(p)
+                if len(results) >= limit:
+                    break
+
+        print(f"[get_ai_products_from_mongodb] Returning {len(results)} products for industry='{industry}'.")
+        return results[:limit]
+
+    except Exception as e:
+        print(f"[get_ai_products_from_mongodb] ERROR: {type(e).__name__}: {e}")
+        return []
+
+
+def get_internal_company_context(company_name: str) -> Dict[str, Any]:
+    """
+    Fetch all internal company intelligence from MongoDB:
+    CRM records, proposals, past meetings, case studies.
+    Returns a dict with all relevant data for the analysis agent.
+    """
+    if mongo_db is None:
+        print("[get_internal_company_context] MongoDB not connected.")
+        return {}
+
+    context: Dict[str, Any] = {
+        "company_name": company_name,
+        "crm_records": [],
+        "proposals": [],
+        "past_meetings": [],
+        "case_studies": [],
+        "related_case_studies": [],
+    }
+
+    try:
+        # 1. CRM Records for this company
+        crm = list(mongo_db["crm records"].find(
+            {"company": {"$regex": company_name, "$options": "i"}},
+            {"_id": 0}
+        ))
+        context["crm_records"] = crm
+        print(f"[get_internal_company_context] CRM records for '{company_name}': {len(crm)}")
+
+        # 2. Proposals for this company
+        proposals = list(mongo_db["proposal documents"].find(
+            {"company": {"$regex": company_name, "$options": "i"}},
+            {"_id": 0}
+        ))
+        context["proposals"] = proposals
+        print(f"[get_internal_company_context] Proposals for '{company_name}': {len(proposals)}")
+
+        # 3. Past meetings for this company
+        meetings = list(mongo_db["past meeting records"].find(
+            {"company": {"$regex": company_name, "$options": "i"}},
+            {"_id": 0}
+        ))
+        context["past_meetings"] = meetings
+        print(f"[get_internal_company_context] Past meetings for '{company_name}': {len(meetings)}")
+
+        # 4. Relevant case studies (by industry if we have crm data)
+        industry = crm[0].get("industry", "") if crm else ""
+        if industry:
+            case_studies = list(mongo_db["case studies"].find(
+                {"industry": {"$regex": industry, "$options": "i"}},
+                {"_id": 0}
+            ).limit(5))
+            context["related_case_studies"] = case_studies
+            print(f"[get_internal_company_context] Case studies for industry '{industry}': {len(case_studies)}")
+
+        return context
+
+    except Exception as e:
+        print(f"[get_internal_company_context] ERROR: {type(e).__name__}: {e}")
+        return context
+
 
 async def safe_get_async(url: str, params=None, headers=None, timeout=15):
     try:
@@ -97,7 +234,7 @@ def chunk_dossier(report: Dict[str, Any]) -> List[str]:
 async def ingest_company_to_neon(company_name: str, company_website: Optional[str] = None) -> Dict[str, Any]:
     """
     Crawls web sources using the Company Intelligence Agent, chunks the report,
-    generates embeddings, and caches the results in Supabase.
+    generates embeddings, and caches the results in NeonDB/MongoDB/Qdrant.
     """
     # 0. Mock Ingestion Fallback for local UI and workflow testing without API limits
     if company_name.lower().strip() == "mock":
@@ -143,20 +280,11 @@ async def ingest_company_to_neon(company_name: str, company_website: Optional[st
             "missing_data": []
         }
         
-        # Chunk the report
         text_chunks = chunk_dossier(report_data)
-        
-        # Generate dummy embeddings based on provider dimension (1024 for Mistral, 3072 for Gemini)
         provider = os.getenv("LLM_PROVIDER", "gemini").lower().strip()
         dim = 1024 if provider == "mistral" else 3072
-        chunks_with_embeddings = []
-        for chunk in text_chunks:
-            chunks_with_embeddings.append({
-                "chunk_text": chunk,
-                "embedding": [0.0] * dim
-            })
+        chunks_with_embeddings = [{"chunk_text": chunk, "embedding": [0.0] * dim} for chunk in text_chunks]
             
-        # Cache to Neon
         save_report_neon(
             company_name="MockCorp AI Solutions",
             website="https://www.mockcorp.ai",
@@ -165,26 +293,36 @@ async def ingest_company_to_neon(company_name: str, company_website: Optional[st
         )
         return report_data
 
-    # 1. Run the Company Intelligence Agent in a dedicated thread/loop to bypass Windows Uvicorn event loop restrictions
+    # 1. Run the Company Intelligence Agent in a dedicated thread/loop
     import asyncio
+    
+    print(f"[ingest_company_to_neon] Starting Company Intelligence Agent for '{company_name}'...")
     
     def _run_agent_sync():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
             return loop.run_until_complete(run_company_agent(company_name, company_website))
+        except Exception as e:
+            print(f"[ingest_company_to_neon] _run_agent_sync error: {type(e).__name__}: {e}")
+            raise
         finally:
             loop.close()
             
-    result = await asyncio.to_thread(_run_agent_sync)
+    try:
+        result = await asyncio.to_thread(_run_agent_sync)
+        print(f"[ingest_company_to_neon] Company Intelligence Agent completed for '{company_name}'.")
+    except Exception as e:
+        print(f"[ingest_company_to_neon] ERROR running company agent: {type(e).__name__}: {e}")
+        result = {}
     
-    report_data = result.get("final_result", {})
+    report_data = result.get("final_result", {}) if result else {}
     if not report_data or not report_data.get("company_summary"):
-        # If scraper returned an empty report or failed, construct a basic profile
+        print(f"[ingest_company_to_neon] WARNING: Empty/minimal report for '{company_name}'. Using skeleton profile.")
         report_data = {
             "company_name": company_name,
             "website": company_website or f"https://www.{company_name.lower().replace(' ', '')}.com",
-            "company_summary": f"Real-time search profile for {company_name}.",
+            "company_summary": f"Profile for {company_name} — real-time data could not be retrieved. Analysis will use LLM knowledge.",
             "industry": "Unknown",
             "products_or_services": [],
             "locations": [],
@@ -215,7 +353,7 @@ async def ingest_company_to_neon(company_name: str, company_website: Optional[st
         except Exception as e:
             print(f"Error embedding chunk for {company_name}: {str(e)}")
             
-    # 4. Save to NeonDB
+    # 4. Save to NeonDB/MongoDB/Qdrant
     save_report_neon(
         company_name=company_name,
         website=report_data.get("website", ""),
@@ -229,10 +367,8 @@ async def ingest_company_to_neon(company_name: str, company_website: Optional[st
 async def vector_search_tool(query: str, limit: int = 3) -> str:
     """Search the vector database of stored company reports for matching context."""
     try:
-        # Embed query
         embeddings_model = get_embeddings()
         query_emb = await embeddings_model.aembed_query(query)
-        # Query Neon vector index
         raw_results = search_neon_vectors(query_emb, limit=limit)
         
         if not raw_results:
@@ -253,14 +389,21 @@ async def vector_search_tool(query: str, limit: int = 3) -> str:
 async def get_company_dossier_tool(company_name: str) -> str:
     """Retrieve the full intelligence report dossier for a specific company from the database.
     If not cached, trigger real-time scraping and ingestion."""
+    print(f"[get_company_dossier_tool] Looking up cached report for '{company_name}'...")
     report = get_cached_report_neon(company_name)
     if not report:
-        print(f"No stored intelligence dossier found for '{company_name}' in the database. Triggering real-time ingestion...")
+        print(f"[get_company_dossier_tool] No cached report for '{company_name}'. Triggering real-time ingestion...")
         try:
             report = await ingest_company_to_neon(company_name)
         except Exception as e:
-            return f"No stored intelligence dossier found for '{company_name}', and automatic ingestion failed: {str(e)}"
-    return json.dumps(report, indent=2)
+            error_msg = f"No stored intelligence dossier found for '{company_name}', and automatic ingestion failed: {type(e).__name__}: {str(e)}"
+            print(f"[get_company_dossier_tool] ERROR: {error_msg}")
+            return error_msg
+    
+    if report:
+        print(f"[get_company_dossier_tool] Returning report for '{company_name}' (confidence: {report.get('confidence_score', '?')}).")
+        return f"=== Company Intelligence Report: {company_name} ===\n" + json.dumps(report, indent=2)
+    return f"No intelligence data available for '{company_name}'."
 
 
 async def live_news_lookup_tool(company_name: str) -> str:
@@ -315,6 +458,7 @@ async def live_news_lookup_tool(company_name: str) -> str:
                 
     if not articles:
         # Fallback to a quick Wikipedia lookup
+        title = company_name
         status, data = await safe_get_async(
             "https://en.wikipedia.org/w/api.php",
             params={
@@ -332,11 +476,11 @@ async def live_news_lookup_tool(company_name: str) -> str:
                     first_result = search_results[0]
                     if isinstance(first_result, dict) and "title" in first_result:
                         title = first_result["title"]
-            status, summary = await safe_get_async(
-                "https://en.wikipedia.org/api/rest_v1/page/summary/" + title.replace(" ", "_")
-            )
-            if status == 200 and summary:
-                return f"Wikipedia Summary for '{company_name}':\n{summary.get('extract')}"
+        status, summary = await safe_get_async(
+            "https://en.wikipedia.org/api/rest_v1/page/summary/" + title.replace(" ", "_")
+        )
+        if status == 200 and summary:
+            return f"Wikipedia Summary for '{company_name}':\n{summary.get('extract')}"
         return f"No live search results or news found for '{company_name}'."
         
     # Deduplicate and format articles
@@ -368,4 +512,3 @@ async def search_mongodb_tool(query: str, limit: int = 5) -> str:
         return "\n".join(formatted)
     except Exception as e:
         return f"Error executing search_mongodb_tool: {str(e)}"
-

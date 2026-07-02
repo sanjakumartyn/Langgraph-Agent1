@@ -228,3 +228,72 @@ def search_vector_store(query_embedding: List[float], limit: int = 5) -> List[Di
     # Sort by similarity descending
     results.sort(key=lambda x: x["similarity"], reverse=True)
     return results[:limit]
+
+def get_reports_history() -> List[Dict[str, Any]]:
+    # Retrieve from MongoDB if available
+    if mongo_db is not None:
+        try:
+            col = mongo_db["company_reports"]
+            docs = col.find({}, {"company_name": 1, "report_data": 1, "created_at": 1}).sort("created_at", -1)
+            history = []
+            for doc in docs:
+                company_name = doc.get("company_name")
+                created_at = doc.get("created_at") or datetime.utcnow().isoformat()
+                report_data = doc.get("report_data") or {}
+                
+                history.append({
+                    "id": f"{company_name.replace(' ', '')}_{created_at}",
+                    "name": company_name,
+                    "industry": report_data.get("industry") or "Unknown",
+                    "date": created_at,
+                    "score": report_data.get("confidence_score") or 0,
+                    "status": "Analyzed"
+                })
+            if history:
+                return history
+        except Exception as e:
+            print(f"MongoDB history load error: {str(e)}")
+            
+    # Fallback to SQLite
+    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT company_name, created_at, report_data FROM company_reports ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    history = []
+    for row in rows:
+        company_name = row["company_name"]
+        created_at = row["created_at"]
+        try:
+            report_data = json.loads(row["report_data"])
+        except Exception:
+            report_data = {}
+            
+        history.append({
+            "id": f"{company_name.replace(' ', '')}_{created_at}",
+            "name": company_name,
+            "industry": report_data.get("industry") or "Unknown",
+            "date": created_at,
+            "score": report_data.get("confidence_score") or 0,
+            "status": "Analyzed"
+        })
+    return history
+
+def clear_reports_history():
+    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM company_reports")
+    cursor.execute("DELETE FROM report_embeddings")
+    conn.commit()
+    conn.close()
+    
+    if mongo_db is not None:
+        try:
+            mongo_db["company_reports"].delete_many({})
+            mongo_db["report_embeddings"].delete_many({})
+        except Exception as e:
+            print(f"MongoDB clear history error: {str(e)}")
+

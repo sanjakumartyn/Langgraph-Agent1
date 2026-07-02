@@ -179,14 +179,6 @@ async def scrape_company_website(state: Dict[str, Any]) -> Dict[str, Any]:
     urls = [
         base,
         f"{base}/about",
-        f"{base}/businesses",
-        f"{base}/products",
-        f"{base}/services",
-        f"{base}/solutions",
-        f"{base}/leadership",
-        f"{base}/careers",
-        f"{base}/sustainability",
-        f"{base}/contact",
     ]
 
     pages = []
@@ -226,115 +218,17 @@ async def extract_product_menu_data(state: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                ],
-            )
-
-            page = await browser.new_page()
-            await page.goto(website, wait_until="domcontentloaded", timeout=60000)
-
-            try:
-                await page.get_by_text("ACCEPT ALL COOKIES").click(timeout=5000)
-            except Exception:
-                pass
-
-            possible_menu_names = [
-                "Products",
-                "Businesses",
-                "Services",
-                "Solutions",
-                "What We Do",
-            ]
-
-            menu_opened = False
-
-            for menu_name in possible_menu_names:
-                try:
-                    locator = page.get_by_text(menu_name, exact=False).first
-                    await locator.hover(timeout=5000)
-                    await page.wait_for_timeout(1500)
-                    menu_opened = True
-                    break
-                except Exception:
-                    continue
-
-            body_text = await page.locator("body").inner_text()
-
-            links = await page.locator("a").evaluate_all(
-                """els => els.map(a => ({
-                    text: a.innerText,
-                    href: a.href
-                })).filter(x => x.text && x.href)"""
-            )
-
-            await browser.close()
-
-        prompt = f"""
-You are a product and service menu extraction agent.
-
-Extract ONLY product, service, business segment, solution, and offering-related data.
-
-Return ONLY valid JSON.
-
-Schema:
-{{
-  "products_or_services": [
-    {{
-      "category": "",
-      "subcategories": [],
-      "source": "product_menu_playwright"
-    }}
-  ],
-  "important_product_links": [
-    {{
-      "title": "",
-      "url": ""
-    }}
-  ]
-}}
-
-Rules:
-- Do not hallucinate.
-- Use only the provided menu text and links.
-- For diversified companies, use business segments as products/services.
-- Ignore login, privacy, cookies, careers unless relevant as service lines.
-
-MENU OPENED:
-{menu_opened}
-
-BODY TEXT:
-{body_text[:12000]}
-
-LINKS:
-{json.dumps(links[:120], indent=2)}
-"""
-
-        product_json = await call_llm_json_async(
-            prompt,
-            {
-                "products_or_services": [],
-                "important_product_links": [],
-            },
-        )
-
+        # OPTIMIZED: Playwright menu extraction disabled for speed
         return {
             **state,
             "product_menu_data": {
                 "source": "product_menu_playwright",
-                "found": True,
-                "data": product_json,
-            },
+                "found": False,
+                "data": {}
+            }
         }
-
     except Exception as e:
-        errors.append(f"Product menu extraction failed: {str(e)}")
-
+        errors.append(f"Playwright menu extraction failed: {str(e)}")
         return {
             **state,
             "product_menu_data": {
@@ -993,8 +887,40 @@ JSON schema:
     }}
   ],
   "confidence_score": 0,
-  "missing_data": []
+  "missing_data": [],
+  "strategic_fit_score": 0,
+  "ai_needs_prediction": [],
+  "meeting_preparation": {{
+    "suggested_discussion_points": [],
+    "potential_objections": [],
+    "relevant_case_studies": [],
+    "stakeholders_to_target": []
+  }},
+  "executive_qbr": {{
+    "key_business_priorities": [],
+    "growth_initiatives": [],
+    "risk_factors": [],
+    "buying_signals": []
+  }},
+  "solution_mapping": [
+    {{
+      "solution": "",
+      "match_percentage": 0,
+      "requirement": "",
+      "deal_value": ""
+    }}
+  ],
+  "deal_coach": {{
+    "recommended_pitch_strategy": ""
+  }}
 }}
+
+For strategic_fit_score, estimate a score between 1 and 100.
+For ai_needs_prediction, predict key requirements or technology needs based on the company's pain points.
+For meeting_preparation, suggest discussion points, potential objections, relevant case studies, and list key stakeholders to target.
+For executive_qbr, list key business priorities, growth initiatives, risk factors, and buying signals.
+For solution_mapping, map matching sales solutions, match percentage, requirements, and estimated deal value.
+For deal_coach.recommended_pitch_strategy, provide a short, actionable pitch script/strategy.
 
 VALIDATED EVIDENCE:
 {json.dumps(state.get("validated_evidence", {}), indent=2)}
@@ -1018,11 +944,32 @@ VALIDATED EVIDENCE:
             "source_evidence": [],
             "confidence_score": 30,
             "missing_data": [],
+            "strategic_fit_score": 75,
+            "ai_needs_prediction": [],
+            "meeting_preparation": {
+                "suggested_discussion_points": [],
+                "potential_objections": [],
+                "relevant_case_studies": [],
+                "stakeholders_to_target": []
+            },
+            "executive_qbr": {
+                "key_business_priorities": [],
+                "growth_initiatives": [],
+                "risk_factors": [],
+                "buying_signals": []
+            },
+            "solution_mapping": [],
+            "deal_coach": {
+                "recommended_pitch_strategy": ""
+            }
         },
     )
 
     # Compute source confidence score programmatically to ensure precision
     final_json["confidence_score"] = calculate_confidence_score(state)
+    if "strategic_fit_score" not in final_json:
+        final_json["strategic_fit_score"] = final_json.get("confidence_score", 75)
+
 
     return {
         **state,
