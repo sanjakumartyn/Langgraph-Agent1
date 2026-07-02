@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SalesIntel AI — Company Intelligence Dashboard</title>
+<meta name="description" content="AI-powered sales intelligence platform for enterprise deal acceleration."/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy: #06142E;
+  --navy-mid: #0D2149;
+  --navy-light: #1E3A5F;
+  --gold: #F5B700;
+  --gold-light: #FDE68A;
+  --blue: #3B82F6;
+  --blue-light: #EFF6FF;
+  --green: #10B981;
+  --green-light: #ECFDF5;
+  --red: #EF4444;
+  --red-light: #FEF2F2;
+  --purple: #8B5CF6;
+  --purple-light: #EDE9FE;
+  --gray-50: #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-400: #9CA3AF;
+  --gray-600: #6B7280;
+  --gray-800: #1F2937;
+  --white: #FFFFFF;
+  --sidebar-w: 280px;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(6,20,46,0.12);
+  --shadow-sm: 0 2px 8px rgba(6,20,46,0.08);
+  --transition: all 0.25s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--gray-400); border-radius: 3px; }
+
+/* ── Top Nav ── */
+.topnav {
+  background: var(--navy);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.topnav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.topnav-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--gold), #F97316);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800; color: var(--navy);
+}
+.topnav-logo .logo-text { font-size: 17px; font-weight: 700; color: var(--white); letter-spacing: -0.3px; }
+.topnav-logo .logo-text span { color: var(--gold); }
+.topnav-subtitle { font-size: 11px; color: var(--gray-400); margin-left: 4px; }
+.topnav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topnav-badge {
+  background: rgba(245,183,0,0.15);
+  border: 1px solid rgba(245,183,0,0.3);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* ── Back Button ── */
+.back-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--white);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
+.back-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ── Main Layout ── */
+.layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--white);
+  border-right: 1px solid var(--gray-200);
+  position: fixed;
+  top: 60px; bottom: 0; left: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 50;
+}
+.sidebar-section { padding: 20px 16px 8px; }
+.sidebar-label { font-size: 10px; font-weight: 700; color: var(--gray-400); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; padding: 0 8px; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
+.nav-item.active { background: rgba(59,130,246,0.08); color: var(--blue); font-weight: 600; }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.sidebar-divider { height: 1px; background: var(--gray-200); margin: 12px 16px; }
+
+/* Company card in sidebar */
+.sidebar-company-card {
+  margin: 0 12px 12px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+  border-radius: 10px;
+  padding: 14px;
+  color: white;
+}
+.sidebar-company-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.sidebar-company-score { font-size: 11px; color: rgba(255,255,255,0.7); }
+.sidebar-company-score span { color: var(--gold); font-weight: 700; font-size: 18px; }
+
+/* ── Main Content ── */
+.main-content {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  padding: 28px 32px;
+  max-width: 100%;
+}
+
+/* ── Search Section ── */
+.search-section {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.search-section::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(245,183,0,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.search-headline { font-size: 22px; font-weight: 800; color: var(--white); margin-bottom: 6px; }
+.search-headline span { color: var(--gold); }
+.search-sub { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
+.search-bar { display: flex; gap: 12px; align-items: center; }
+.search-input-wrap { flex: 1; position: relative; }
+.search-input-wrap .search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 18px; color: var(--gray-400); pointer-events: none;
+}
+#companyInput {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: var(--white);
+  font-size: 15px; font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: var(--transition);
+}
+#companyInput::placeholder { color: rgba(255,255,255,0.4); }
+#companyInput:focus { border-color: var(--gold); background: rgba(255,255,255,0.12); }
+#analyzeBtn {
+  padding: 14px 28px;
+  background: linear-gradient(135deg, var(--gold), #F97316);
+  color: var(--navy);
+  font-size: 14px; font-weight: 700;
+  border: none; border-radius: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  display: flex; align-items: center; gap: 8px;
+}
+#analyzeBtn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(245,183,0,0.35); }
+#analyzeBtn:active { transform: translateY(0); }
+#analyzeBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Quick company pills */
+.quick-companies { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.quick-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.quick-pill:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,183,0,0.08); }
+
+/* ── Loading ── */
+.loading-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(6,20,46,0.7);
+  z-index: 999;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.loading-overlay.active { display: flex; }
+.loading-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 36px 48px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  min-width: 320px;
+}
+.loading-spinner {
+  width: 56px; height: 56px;
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-company { font-size: 20px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.loading-step { font-size: 13px; color: var(--gray-600); }
+.loading-steps-list { margin-top: 14px; text-align: left; }
+.loading-step-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--gray-600);
+  padding: 4px 0;
+}
+.loading-step-item .step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gray-300); flex-shrink: 0;
+}
+.loading-step-item.done .step-dot { background: var(--green); }
+.loading-step-item.active .step-dot { background: var(--gold); animation: pulse 0.8s ease infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.7; } }
+
+/* ── Stats Row ── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.stat-card.gold::after { background: linear-gradient(90deg, var(--gold), #F97316); }
+.stat-card.blue::after { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+.stat-card.green::after { background: linear-gradient(90deg, var(--green), #06B6D4); }
+.stat-card.purple::after { background: linear-gradient(90deg, var(--purple), #EC4899); }
+.stat-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stat-value { font-size: 32px; font-weight: 800; color: var(--navy); line-height: 1; }
+.stat-sub { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
+.stat-icon { position: absolute; top: 16px; right: 16px; font-size: 28px; opacity: 0.15; }
+
+/* ── Dashboard Grid ── */
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dashboard-grid .full-width { grid-column: 1 / -1; }
+
+/* ── Card ── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+  transition: var(--transition);
+}
+.card:hover { box-shadow: var(--shadow); }
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.card-title { font-size: 14px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+.card-title .card-icon { font-size: 18px; }
+.card-badge {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--blue-light);
+  color: var(--blue);
+}
+.card-body { padding: 20px; }
+
+/* ── Overview Card ── */
+.overview-text { font-size: 14px; line-height: 1.7; color: var(--gray-800); }
+
+/* ── Needs List ── */
+.needs-list { display: flex; flex-direction: column; gap: 10px; }
+.need-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: 8px;
+  border-left: 3px solid var(--blue);
+}
+.need-item .need-num {
+  width: 22px; height: 22px;
+  background: var(--blue);
+  color: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+}
+.need-item .need-text { font-size: 13px; color: var(--gray-800); line-height: 1.5; }
+
+/* ── Solution Mapping ── */
+.solution-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.solution-card {
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 16px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.solution-card:hover { border-color: var(--blue); box-shadow: 0 4px 16px rgba(59,130,246,0.1); transform: translateY(-2px); }
+.solution-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+}
+.solution-product { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.solution-requirement { font-size: 11px; color: var(--gray-600); margin-bottom: 12px; line-height: 1.4; }
+.solution-footer { display: flex; align-items: center; justify-content: space-between; }
+.solution-match {
+  display: flex; align-items: center; gap: 6px;
+}
+.match-bar { width: 60px; height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+.match-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue), var(--green)); transition: width 0.8s ease; }
+.match-pct { font-size: 12px; font-weight: 700; color: var(--blue); }
+.solution-value { font-size: 12px; font-weight: 700; color: var(--green); }
+
+/* ── Meeting Prep ── */
+.meeting-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.meeting-section { }
+.meeting-section-title { font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.meeting-items { display: flex; flex-direction: column; gap: 6px; }
+.meeting-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: var(--gray-800); line-height: 1.4;
+  padding: 8px 10px;
+  background: var(--gray-50);
+  border-radius: 6px;
+}
+.meeting-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.dot-blue { background: var(--blue); }
+.dot-green { background: var(--green); }
+.dot-gold { background: var(--gold); }
+.dot-red { background: var(--red); }
+.dot-purple { background: var(--purple); }
+
+/* Stakeholders */
+.stakeholder-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.stakeholder-pill {
+  padding: 5px 12px;
+  background: var(--purple-light);
+  color: var(--purple);
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+
+/* ── Deal Coach Panel ── */
+.coach-panel {
+  display: flex;
+  flex-direction: column;
+  height: 480px;
+}
+.coach-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--gray-50);
+}
+.coach-msg {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  animation: fadeInMsg 0.3s ease;
+}
+@keyframes fadeInMsg { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.coach-msg.user {
+  background: linear-gradient(135deg, var(--blue), var(--navy-light));
+  color: white;
+  align-self: flex-end;
+  border-radius: 12px 12px 4px 12px;
+}
+.coach-msg.bot {
+  background: var(--white);
+  color: var(--gray-800);
+  align-self: flex-start;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px 12px 12px 4px;
+  box-shadow: var(--shadow-sm);
+}
+.coach-msg.bot.thinking {
+  display: flex; gap: 6px; align-items: center; padding: 14px 18px;
+}
+.thinking-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-400); animation: thinking 1.2s ease infinite; }
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes thinking { 0%,100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-5px); opacity: 1; } }
+.coach-input-area {
+  display: flex; gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--white);
+}
+#coachInput {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--gray-200);
+  font-size: 13px; font-family: 'Inter', sans-serif;
+  outline: none; transition: var(--transition);
+  resize: none; height: 40px;
+}
+#coachInput:focus { border-color: var(--blue); }
+#sendCoachBtn {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--blue), var(--navy-light));
+  color: white; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: var(--transition); font-family: 'Inter', sans-serif;
+}
+#sendCoachBtn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+#sendCoachBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── Action Bar ── */
+.action-bar {
+  display: flex; gap: 12px; align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--gray-200);
+  margin-top: 12px;
+}
+.btn-primary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: white; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: var(--transition); font-family: 'Inter', sans-serif;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn-gold {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--gold), #F97316);
+  color: var(--navy); border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: var(--transition); font-family: 'Inter', sans-serif;
+}
+.btn-gold:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,183,0,0.35); }
+.btn-outline {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--gray-800);
+  border: 1.5px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: var(--transition); font-family: 'Inter', sans-serif;
+}
+.btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+
+/* ── Steps trace ── */
+.steps-list { display: flex; flex-direction: column; gap: 6px; }
+.step-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  font-size: 12px; color: var(--gray-700);
+}
+.step-check { font-size: 14px; color: var(--green); flex-shrink: 0; }
+
+/* ── Sources ── */
+.sources-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.source-tag {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 500;
+}
+.source-tag.web { background: var(--blue-light); color: var(--blue); }
+.source-tag.mongodb { background: var(--green-light); color: var(--green); }
+.source-tag.news { background: var(--purple-light); color: var(--purple); }
+.source-tag.vector { background: rgba(245,183,0,0.1); color: #92400E; }
+.source-tag.dossier { background: var(--red-light); color: var(--red); }
+
+/* ── Empty State ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 32px;
+  color: var(--gray-400);
+}
+.empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.5; }
+.empty-state h3 { font-size: 18px; font-weight: 700; color: var(--gray-600); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; line-height: 1.6; max-width: 380px; margin: 0 auto; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--navy);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow);
+  z-index: 9999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-left: 4px solid var(--green); }
+.toast.error { border-left: 4px solid var(--red); }
+.toast.info { border-left: 4px solid var(--blue); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .meeting-grid { grid-template-columns: 1fr 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .main-content { margin-left: 0; padding: 16px; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .meeting-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<nav class="topnav">
+  <button class="back-btn" onclick="window.history.back()" title="Go Back">← Back</button>
+  <a class="topnav-logo" href="#">
+    <div class="logo-icon">S</div>
+    <span class="logo-text">SalesIntel <span>AI</span></span>
+  </a>
+  <span class="topnav-subtitle">Company Intelligence Dashboard</span>
+  <div class="topnav-right">
+    <span class="topnav-badge">⚡ Agentic RAG v3.0</span>
+  </div>
+</nav>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-card">
+    <div class="loading-spinner"></div>
+    <div class="loading-company" id="loadingCompanyName">Analyzing...</div>
+    <div class="loading-step">Running agentic intelligence pipeline</div>
+    <div class="loading-steps-list">
+      <div class="loading-step-item active" id="ls1"><div class="step-dot"></div> Intent Detection & Query Understanding</div>
+      <div class="loading-step-item" id="ls2"><div class="step-dot"></div> Company Routing & DB Lookup</div>
+      <div class="loading-step-item" id="ls3"><div class="step-dot"></div> External Web Scraping & News APIs</div>
+      <div class="loading-step-item" id="ls4"><div class="step-dot"></div> AI Product Matching from MongoDB</div>
+      <div class="loading-step-item" id="ls5"><div class="step-dot"></div> Vector Search & RAG Retrieval</div>
+      <div class="loading-step-item" id="ls6"><div class="step-dot"></div> Analysis Agent & Dashboard Generation</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" onclick="scrollToSection('overview-section')"><span class="nav-icon">🏠</span> Dashboard</button>
+        <button class="nav-item" onclick="scrollToSection('overview-section')"><span class="nav-icon">🏢</span> Company Overview</button>
+        <button class="nav-item" onclick="scrollToSection('solutions-section')"><span class="nav-icon">💡</span> AI Solutions</button>
+        <button class="nav-item" onclick="scrollToSection('meeting-section')"><span class="nav-icon">📋</span> Meeting Prep</button>
+        <button class="nav-item" onclick="scrollToSection('coach-section')"><span class="nav-icon">🤖</span> Deal Coach</button>
+        <button class="nav-item" onclick="scrollToSection('pipeline-section')"><span class="nav-icon">🔍</span> Intelligence Pipeline</button>
+      </nav>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Actions</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item" id="sidebarDownloadBtn" onclick="downloadPDF()" disabled><span class="nav-icon">📥</span> Download PDF Report</button>
+        <button class="nav-item" onclick="clearDashboard()"><span class="nav-icon">🔄</span> New Analysis</button>
+      </nav>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- Current Company Card -->
+    <div id="sidebarCompanyCard" style="display:none">
+      <div class="sidebar-company-card">
+        <div class="sidebar-company-name" id="sidebarCompanyName">—</div>
+        <div class="sidebar-company-score">Strategic Fit: <span id="sidebarFitScore">—</span>%</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quick Companies</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item" onclick="quickAnalyze('Amazon')"><span class="nav-icon">🔸</span> Amazon</button>
+        <button class="nav-item" onclick="quickAnalyze('Microsoft')"><span class="nav-icon">🔸</span> Microsoft</button>
+        <button class="nav-item" onclick="quickAnalyze('Tesla')"><span class="nav-icon">🔸</span> Tesla</button>
+        <button class="nav-item" onclick="quickAnalyze('Infosys')"><span class="nav-icon">🔸</span> Infosys</button>
+        <button class="nav-item" onclick="quickAnalyze('HDFC Bank')"><span class="nav-icon">🔸</span> HDFC Bank</button>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <div class="search-headline">Analyze any company with <span>AI Intelligence</span></div>
+      <div class="search-sub">Enter a company name to get a full sales intelligence report powered by our MongoDB AI product catalog, web scraping, and Agentic RAG.</div>
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="companyInput" placeholder="e.g. Amazon, Tesla, HDFC Bank, Infosys..." autocomplete="off"/>
+        </div>
+        <button id="analyzeBtn" onclick="analyzeCompany()">
+          <span>⚡</span> Analyze
+        </button>
+      </div>
+      <div class="quick-companies">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">Quick:</span>
+        <div class="quick-pill" onclick="quickAnalyze('Amazon')">Amazon</div>
+        <div class="quick-pill" onclick="quickAnalyze('Microsoft')">Microsoft</div>
+        <div class="quick-pill" onclick="quickAnalyze('Tesla')">Tesla</div>
+        <div class="quick-pill" onclick="quickAnalyze('Walmart')">Walmart</div>
+        <div class="quick-pill" onclick="quickAnalyze('Infosys')">Infosys</div>
+        <div class="quick-pill" onclick="quickAnalyze('HDFC Bank')">HDFC Bank</div>
+        <div class="quick-pill" onclick="quickAnalyze('mock')">Demo Mode</div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎯</div>
+      <h3>Ready to Generate Intelligence</h3>
+      <p>Enter any company name above to get a complete AI-powered sales intelligence report with matched products from our catalog, meeting prep, and deal coaching.</p>
+    </div>
+
+    <!-- Dashboard (hidden until analysis runs) -->
+    <div id="dashboardContent" style="display:none">
+
+      <!-- Stats Row -->
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card gold">
+          <span class="stat-icon">🎯</span>
+          <div class="stat-label">Strategic Fit Score</div>
+          <div class="stat-value" id="statFit">—</div>
+          <div class="stat-sub" id="statFitLabel">Calculating...</div>
+        </div>
+        <div class="stat-card blue">
+          <span class="stat-icon">💡</span>
+          <div class="stat-label">AI Solutions Matched</div>
+          <div class="stat-value" id="statSolutions">—</div>
+          <div class="stat-sub">From our product catalog</div>
+        </div>
+        <div class="stat-card green">
+          <span class="stat-icon">🤖</span>
+          <div class="stat-label">Predicted Needs</div>
+          <div class="stat-value" id="statNeeds">—</div>
+          <div class="stat-sub">AI/technology requirements</div>
+        </div>
+        <div class="stat-card purple">
+          <span class="stat-icon">📊</span>
+          <div class="stat-label">Data Sources Used</div>
+          <div class="stat-value" id="statSources">—</div>
+          <div class="stat-sub">MongoDB, Web, News, RAG</div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Grid -->
+      <div class="dashboard-grid">
+
+        <!-- Company Overview -->
+        <div class="card full-width" id="overview-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">🏢</span> Company Overview</div>
+            <div class="card-badge" id="companyNameBadge">—</div>
+          </div>
+          <div class="card-body">
+            <div class="overview-text" id="overviewText">—</div>
+            <!-- Action Bar -->
+            <div class="action-bar">
+              <button class="btn-gold" onclick="downloadPDF()" id="downloadBtn">
+                📥 Download PDF Report
+              </button>
+              <button class="btn-primary" onclick="document.getElementById('coachInput').focus()">
+                🤖 Ask Deal Coach
+              </button>
+              <button class="btn-outline" onclick="clearDashboard()">
+                🔄 New Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Predicted AI Needs -->
+        <div class="card" id="needs-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">🤖</span> Predicted AI Needs</div>
+            <div class="card-badge" id="needsBadge">0 needs</div>
+          </div>
+          <div class="card-body">
+            <div class="needs-list" id="needsList"></div>
+          </div>
+        </div>
+
+        <!-- Meeting Prep -->
+        <div class="card" id="meeting-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">📋</span> Meeting Preparation</div>
+          </div>
+          <div class="card-body">
+            <div class="meeting-grid">
+              <div class="meeting-section">
+                <div class="meeting-section-title"><span>🎯</span> Priorities</div>
+                <div class="meeting-items" id="prioritiesList"></div>
+              </div>
+              <div class="meeting-section">
+                <div class="meeting-section-title"><span>🚀</span> Growth Initiatives</div>
+                <div class="meeting-items" id="growthList"></div>
+              </div>
+              <div class="meeting-section">
+                <div class="meeting-section-title"><span>⚠️</span> Risks & Objections</div>
+                <div class="meeting-items" id="risksList"></div>
+              </div>
+              <div class="meeting-section">
+                <div class="meeting-section-title"><span>💚</span> Buying Signals</div>
+                <div class="meeting-items" id="signalsList"></div>
+              </div>
+              <div class="meeting-section" style="grid-column: span 2">
+                <div class="meeting-section-title"><span>👥</span> Key Stakeholders</div>
+                <div class="stakeholder-pills" id="stakeholdersList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Solution Mapping (full width) -->
+        <div class="card full-width" id="solutions-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">💡</span> Recommended AI Solutions</div>
+            <div class="card-badge" id="solutionsBadge">0 matches</div>
+          </div>
+          <div class="card-body">
+            <div class="solution-grid" id="solutionGrid"></div>
+          </div>
+        </div>
+
+        <!-- Deal Coach -->
+        <div class="card" id="coach-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">🤖</span> AI Deal Coach</div>
+            <div class="card-badge">Live Chat</div>
+          </div>
+          <div class="coach-panel">
+            <div class="coach-messages" id="coachMessages">
+              <div class="coach-msg bot">
+                👋 Hi! I'm your AI Deal Coach. Once you analyze a company, I'll have full context about their CRM history, proposals, and which of our AI products best fit their needs. Ask me anything about the deal!
+              </div>
+            </div>
+            <div class="coach-input-area">
+              <input type="text" id="coachInput" placeholder="Ask about objection handling, product fit, pricing strategy..." />
+              <button id="sendCoachBtn" onclick="sendCoachMessage()">Send ↑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Intelligence Pipeline -->
+        <div class="card" id="pipeline-section">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">🔍</span> Intelligence Pipeline</div>
+          </div>
+          <div class="card-body">
+            <div style="margin-bottom:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Agent Steps Taken</div>
+              <div class="steps-list" id="stepsList"></div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Data Sources Used</div>
+              <div class="sources-row" id="sourcesList"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard-grid -->
+    </div><!-- /dashboardContent -->
+
+  </main>
+</div><!-- /layout -->
+
+<script>
+const API_BASE = window.location.origin;
+let currentCompany = '';
+let currentSessionId = '';
+let loadingInterval = null;
+
+// ── Loading Steps Animation ────────────────────────────────────────────────
+function animateLoadingSteps() {
+  const steps = ['ls1','ls2','ls3','ls4','ls5','ls6'];
+  let idx = 0;
+  if (loadingInterval) clearInterval(loadingInterval);
+  steps.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = 'loading-step-item'; }
+  });
+  if (steps[0]) document.getElementById(steps[0]).className = 'loading-step-item active';
+  loadingInterval = setInterval(() => {
+    if (idx < steps.length) {
+      const prev = document.getElementById(steps[idx]);
+      if (prev) prev.className = 'loading-step-item done';
+    }
+    idx++;
+    if (idx < steps.length) {
+      const cur = document.getElementById(steps[idx]);
+      if (cur) cur.className = 'loading-step-item active';
+    } else {
+      clearInterval(loadingInterval);
+    }
+  }, 1800);
+}
+
+// ── Analyze Company ─────────────────────────────────────────────────────────
+async function analyzeCompany() {
+  const input = document.getElementById('companyInput');
+  const company = input.value.trim();
+  if (!company) { showToast('Please enter a company name', 'error'); return; }
+
+  currentCompany = company;
+  currentSessionId = 'session_' + Date.now();
+
+  // Show loading
+  document.getElementById('loadingCompanyName').textContent = `Analyzing ${company}...`;
+  document.getElementById('loadingOverlay').classList.add('active');
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'none';
+  animateLoadingSteps();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: company, session_id: currentSessionId })
+    });
+    const result = await res.json();
+
+    if (result.success && result.data) {
+      renderDashboard(result.data, result.steps_taken || [], result.sources_used || []);
+      showToast(`✅ Analysis complete for ${company}`, 'success');
+    } else {
+      showToast('Analysis failed: ' + (result.detail || 'Unknown error'), 'error');
+      document.getElementById('emptyState').style.display = 'block';
+    }
+  } catch(err) {
+    showToast('Network error: ' + err.message, 'error');
+    document.getElementById('emptyState').style.display = 'block';
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('active');
+    document.getElementById('analyzeBtn').disabled = false;
+    if (loadingInterval) clearInterval(loadingInterval);
+  }
+}
+
+function quickAnalyze(name) {
+  document.getElementById('companyInput').value = name;
+  analyzeCompany();
+}
+
+// ── Render Dashboard ────────────────────────────────────────────────────────
+function renderDashboard(data, steps, sources) {
+  // Show dashboard
+  document.getElementById('dashboardContent').style.display = 'block';
+  document.getElementById('emptyState').style.display = 'none';
+
+  const fitScore = data.strategic_fit || 0;
+  const needsList = data.needs_prediction || [];
+  const solutionMap = data.solution_mapping || [];
+  const meetingPrep = data.meeting_prep || {};
+
+  // ── Stats
+  document.getElementById('statFit').textContent = fitScore + '%';
+  document.getElementById('statFitLabel').textContent = fitScore >= 75 ? 'High Potential ✨' : fitScore >= 50 ? 'Moderate Fit' : 'Exploratory Stage';
+  document.getElementById('statSolutions').textContent = solutionMap.length;
+  document.getElementById('statNeeds').textContent = needsList.length;
+  document.getElementById('statSources').textContent = sources.length;
+
+  // ── Company badge
+  document.getElementById('companyNameBadge').textContent = data.company || currentCompany;
+  document.getElementById('overviewText').textContent = data.overview || 'Analysis in progress...';
+
+  // ── Sidebar card
+  document.getElementById('sidebarCompanyCard').style.display = 'block';
+  document.getElementById('sidebarCompanyName').textContent = data.company || currentCompany;
+  document.getElementById('sidebarFitScore').textContent = fitScore;
+
+  // Enable sidebar download
+  document.getElementById('sidebarDownloadBtn').disabled = false;
+
+  // ── Needs
+  const needsBadge = document.getElementById('needsBadge');
+  needsBadge.textContent = needsList.length + ' needs';
+  const needsEl = document.getElementById('needsList');
+  needsEl.innerHTML = needsList.map((need, i) =>
+    `<div class="need-item">
+      <div class="need-num">${i+1}</div>
+      <div class="need-text">${escHtml(need)}</div>
+    </div>`
+  ).join('') || '<div style="color:var(--gray-400);font-size:13px;">No predicted needs found.</div>';
+
+  // ── Solutions
+  document.getElementById('solutionsBadge').textContent = solutionMap.length + ' matches';
+  const solutionEl = document.getElementById('solutionGrid');
+  solutionEl.innerHTML = solutionMap.map(sol => {
+    const match = sol.match || 80;
+    return `<div class="solution-card">
+      <div class="solution-product">💡 ${escHtml(sol.solution || '—')}</div>
+      <div class="solution-requirement">${escHtml(sol.requirement || '—')}</div>
+      <div class="solution-footer">
+        <div class="solution-match">
+          <div class="match-bar"><div class="match-fill" style="width:${match}%"></div></div>
+          <span class="match-pct">${match}%</span>
+        </div>
+        <div class="solution-value">${escHtml(sol.value || 'Contact for pricing')}</div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--gray-400);font-size:13px;padding:8px;">No solution matches yet. Try re-analyzing.</div>';
+
+  // ── Meeting Prep
+  renderMeetingList('prioritiesList', meetingPrep.priorities || [], 'dot-blue');
+  renderMeetingList('growthList', meetingPrep.growth_initiatives || [], 'dot-green');
+  renderMeetingList('risksList', [...(meetingPrep.risks || []), ...(meetingPrep.objections || [])], 'dot-red');
+  renderMeetingList('signalsList', meetingPrep.buying_signals || [], 'dot-gold');
+
+  const stakeEl = document.getElementById('stakeholdersList');
+  const stakeholders = meetingPrep.stakeholders || [];
+  stakeEl.innerHTML = stakeholders.map(s =>
+    `<span class="stakeholder-pill">👤 ${escHtml(s)}</span>`
+  ).join('') || '<span style="color:var(--gray-400);font-size:13px;">—</span>';
+
+  // ── Pipeline Steps
+  const stepsEl = document.getElementById('stepsList');
+  stepsEl.innerHTML = steps.slice(0, 10).map(step =>
+    `<div class="step-item"><span class="step-check">✅</span>${escHtml(step)}</div>`
+  ).join('') || '<div style="color:var(--gray-400);font-size:12px;padding:8px;">Pipeline steps loading...</div>';
+
+  // ── Sources
+  const sourcesEl = document.getElementById('sourcesList');
+  const typeMap = { web:'web', mongodb:'mongodb', news:'news', vector:'vector', dossier:'dossier' };
+  sourcesEl.innerHTML = sources.map(src => {
+    const cls = typeMap[src.type] || 'web';
+    return `<span class="source-tag ${cls}">◉ ${escHtml(src.name || src.type)}</span>`;
+  }).join('') || '<span style="color:var(--gray-400);font-size:12px;">No source data available.</span>';
+
+  // Update deal coach context
+  updateDealCoachContext(data.company || currentCompany);
+
+  // Smooth scroll
+  setTimeout(() => document.getElementById('statsRow')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function renderMeetingList(id, items, dotClass) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = items.map(item =>
+    `<div class="meeting-item"><div class="meeting-dot ${dotClass}"></div>${escHtml(item)}</div>`
+  ).join('') || `<div style="color:var(--gray-400);font-size:12px;padding:4px;">—</div>`;
+}
+
+// ── Deal Coach ──────────────────────────────────────────────────────────────
+function updateDealCoachContext(company) {
+  const msgs = document.getElementById('coachMessages');
+  // Add a context message
+  const ctx = document.createElement('div');
+  ctx.className = 'coach-msg bot';
+  ctx.innerHTML = `🎯 <strong>${escHtml(company)}</strong> analysis complete! I now have full context about their CRM history, pain points, and our matched AI products. Ask me anything — objection handling, pricing strategy, who to call first, or how to position our solutions!`;
+  msgs.appendChild(ctx);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendCoachMessage() {
+  const input = document.getElementById('coachInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!currentCompany) { showToast('Please analyze a company first', 'error'); return; }
+
+  input.value = '';
+  const msgs = document.getElementById('coachMessages');
+
+  // User bubble
+  const userBubble = document.createElement('div');
+  userBubble.className = 'coach-msg user';
+  userBubble.textContent = msg;
+  msgs.appendChild(userBubble);
+
+  // Thinking bubble
+  const thinking = document.createElement('div');
+  thinking.className = 'coach-msg bot thinking';
+  thinking.innerHTML = '<div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div>';
+  msgs.appendChild(thinking);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  document.getElementById('sendCoachBtn').disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: msg,
+        company: currentCompany,
+        session_id: currentSessionId
+      })
+    });
+    const result = await res.json();
+    thinking.remove();
+
+    const botBubble = document.createElement('div');
+    botBubble.className = 'coach-msg bot';
+    botBubble.innerHTML = result.success ? result.response : `❌ Error: ${result.error || 'Unknown error'}`;
+    msgs.appendChild(botBubble);
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(err) {
+    thinking.remove();
+    const errBubble = document.createElement('div');
+    errBubble.className = 'coach-msg bot';
+    errBubble.textContent = '❌ Network error: ' + err.message;
+    msgs.appendChild(errBubble);
+  } finally {
+    document.getElementById('sendCoachBtn').disabled = false;
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+}
+
+// ── PDF Download ────────────────────────────────────────────────────────────
+async function downloadPDF() {
+  if (!currentCompany) { showToast('Please analyze a company first', 'error'); return; }
+  showToast('🔄 Generating PDF report...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company: currentCompany, session_id: currentSessionId })
+    });
+    const result = await res.json();
+    if (result.success && result.url) {
+      // Trigger download
+      const a = document.createElement('a');
+      a.href = result.url;
+      a.download = result.filename || `${currentCompany}_AI_Proposal.pdf`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('✅ PDF downloaded successfully!', 'success');
+    } else {
+      showToast('PDF generation failed: ' + (result.error || 'Unknown error'), 'error');
+    }
+  } catch(err) {
+    showToast('Network error: ' + err.message, 'error');
+  }
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function clearDashboard() {
+  document.getElementById('dashboardContent').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('companyInput').value = '';
+  document.getElementById('companyInput').focus();
+  document.getElementById('sidebarCompanyCard').style.display = 'none';
+  document.getElementById('sidebarDownloadBtn').disabled = true;
+  currentCompany = '';
+  currentSessionId = '';
+  // Reset coach
+  document.getElementById('coachMessages').innerHTML = `
+    <div class="coach-msg bot">
+      👋 Hi! I'm your AI Deal Coach. Once you analyze a company, I'll have full context about their CRM history, proposals, and which of our AI products best fit their needs. Ask me anything about the deal!
+    </div>`;
+}
+
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast show ${type}`;
+  setTimeout(() => { toast.className = 'toast'; }, 4000);
+}
+
+// ── Enter key support ────────────────────────────────────────────────────────
+document.getElementById('companyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyzeCompany();
+});
+document.getElementById('coachInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) sendCoachMessage();
+});
+</script>
+</body>
+</html>
